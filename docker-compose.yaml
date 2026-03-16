@@ -1,0 +1,23 @@
+version: "3"
+
+services:
+
+  backend:
+    build: ./backend
+    container_name: backendzoom
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: frontendzoom
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: always
