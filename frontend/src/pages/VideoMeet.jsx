@@ -451,18 +451,24 @@ export default function VideoMeetComponent() {
 
             {askForUsername === true ?
 
-                <div>
-
-
-                    <h2>Enter into Lobby </h2>
-                    <TextField id="outlined-basic" label="Username" value={username} onChange={e => setUsername(e.target.value)} variant="outlined" />
-                    <Button variant="contained" onClick={connect}>Connect</Button>
-
-
-                    <div>
-                        <video ref={localVideoref} autoPlay muted></video>
+                <div className={styles.lobbyContainer}>
+                    <div className={styles.lobbyCard}>
+                        <h2 className={styles.lobbyTitle}>Join Meeting Lobby</h2>
+                        <div className={styles.lobbyVideoContainer}>
+                            <video ref={localVideoref} autoPlay muted></video>
+                        </div>
+                        <div className={styles.lobbyInputGroup}>
+                            <TextField 
+                                id="outlined-basic" 
+                                label="Username" 
+                                value={username} 
+                                onChange={e => setUsername(e.target.value)} 
+                                variant="outlined" 
+                                fullWidth
+                            />
+                            <Button variant="contained" onClick={connect}>Connect</Button>
+                        </div>
                     </div>
-
                 </div> :
 
 
@@ -479,9 +485,9 @@ export default function VideoMeetComponent() {
 
                                     console.log(messages)
                                     return (
-                                        <div style={{ marginBottom: "20px" }} key={index}>
-                                            <p style={{ fontWeight: "bold" }}>{item.sender}</p>
-                                            <p>{item.data}</p>
+                                        <div className={styles.messageBubble} key={index}>
+                                            <span className={styles.messageSender}>{item.sender}</span>
+                                            <span className={styles.messageText}>{item.data}</span>
                                         </div>
                                     )
                                 }) : <p>No Messages Yet</p>}

@@ -1,0 +1,184 @@
+/* landing.css */
+.landingContainer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0b0c10;
+}
+
+/* 3D Background container */
+.bgContainer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+/* Foreground content wrapper */
+.contentWrapper {
+    position: relative;
+    z-index: 1;
+    color: white;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Navigation Bar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background: rgba(11, 12, 16, 0.6);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.brand {
+    font-size: 28px;
+    fontWeight: 600;
+    color: #FF9839;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.navActions {
+    display: flex;
+    gap: 15px;
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 24px;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 30px;
+    background: #FF9839;
+    color: black;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0px 4px 15px rgba(255, 152, 57, 0.2);
+}
+
+.btn:hover {
+    background: #ff7f00;
+    transform: translateY(-2px);
+    box-shadow: 0px 8px 20px rgba(255, 152, 57, 0.4);
+}
+
+.btnBig {
+    padding: 14px 36px;
+    font-size: 1.15rem;
+    border-radius: 30px;
+    background: #FF9839;
+    color: black;
+    cursor: pointer;
+    font-weight: 600;
+    border: none;
+    transition: all 0.3s ease;
+    box-shadow: 0px 4px 20px rgba(255, 152, 57, 0.3);
+}
+
+.btnBig:hover {
+    background: #ff7f00;
+    transform: scale(1.05);
+    box-shadow: 0px 8px 25px rgba(255, 152, 57, 0.5);
+}
+
+/* Hero Section */
+.heroSection {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    margin-top: -5vh; /* Center it slightly higher visually */
+}
+
+.heroTitle {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 15px;
+    text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.heroTitle span {
+    color: #FF9839;
+}
+
+.heroSubtitle {
+    font-size: 1.3rem;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 30px;
+    max-width: 600px;
+    line-height: 1.5;
+}
+
+/* RESPONSIVE DESIGN - MEDIA QUERIES */
+
+@media (max-width: 768px) {
+    .navbar {
+        padding: 15px 25px;
+    }
+    
+    .brand {
+        font-size: 22px;
+    }
+    
+    .btn {
+        padding: 8px 18px;
+        font-size: 0.85rem;
+    }
+    
+    .heroTitle {
+        font-size: 2.5rem;
+    }
+    
+    .heroSubtitle {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 580px) {
+    .navbar {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .navActions {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .btn {
+        flex: 1;
+        min-width: 90px;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .heroTitle {
+        font-size: 1.9rem;
+        margin-top: 20px;
+    }
+    
+    .heroSubtitle {
+        font-size: 0.95rem;
+        margin-bottom: 20px;
+    }
+    
+    .btnBig {
+        padding: 12px 28px;
+        font-size: 1rem;
+    }
+}
