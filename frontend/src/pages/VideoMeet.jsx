@@ -11,6 +11,7 @@ import MicOffIcon from '@mui/icons-material/MicOff'
 import ScreenShareIcon from '@mui/icons-material/ScreenShare';
 import StopScreenShareIcon from '@mui/icons-material/StopScreenShare'
 import ChatIcon from '@mui/icons-material/Chat'
+import LinkIcon from '@mui/icons-material/Link';
 import server from '../environment';
 
 const server_url = server;
@@ -19,7 +20,11 @@ var connections = {};
 
 const peerConfigConnections = {
     "iceServers": [
-        { "urls": "stun:stun.l.google.com:19302" }
+        { "urls": "stun:stun.l.google.com:19302" },
+        { "urls": "stun:stun1.l.google.com:19302" },
+        { "urls": "stun:stun2.l.google.com:19302" },
+        { "urls": "stun:stun3.l.google.com:19302" },
+        { "urls": "stun:stun4.l.google.com:19302" }
     ]
 }
 
@@ -58,6 +63,7 @@ export default function VideoMeetComponent() {
 
     let [videos, setVideos] = useState([])
     let [localStream, setLocalStream] = useState(null);
+    let [copySuccess, setCopySuccess] = useState(false);
 
     // TODO
     // if(isChrome() === false) {
@@ -296,7 +302,11 @@ export default function VideoMeetComponent() {
             socketRef.current.on('chat-message', addMessage)
 
             socketRef.current.on('user-left', (id) => {
-                setVideos((videos) => videos.filter((video) => video.socketId !== id))
+                setVideos((videos) => {
+                    const updatedVideos = videos.filter((video) => video.socketId !== id);
+                    videoRef.current = updatedVideos;
+                    return updatedVideos;
+                });
             })
 
             socketRef.current.on('user-joined', (id, clients) => {
@@ -310,8 +320,8 @@ export default function VideoMeetComponent() {
                         }
                     }
 
-                    // Wait for their video stream
-                    connections[socketListId].onaddstream = (event) => {
+                    // Wait for their video stream (support both standard ontrack and legacy onaddstream)
+                    const handleRemoteStream = (stream) => {
                         console.log("BEFORE:", videoRef.current);
                         console.log("FINDING ID: ", socketListId);
 
@@ -323,7 +333,7 @@ export default function VideoMeetComponent() {
                             // Update the stream of the existing video
                             setVideos(videos => {
                                 const updatedVideos = videos.map(video =>
-                                    video.socketId === socketListId ? { ...video, stream: event.stream } : video
+                                    video.socketId === socketListId ? { ...video, stream: stream } : video
                                 );
                                 videoRef.current = updatedVideos;
                                 return updatedVideos;
@@ -333,7 +343,7 @@ export default function VideoMeetComponent() {
                             console.log("CREATING NEW");
                             let newVideo = {
                                 socketId: socketListId,
-                                stream: event.stream,
+                                stream: stream,
                                 autoplay: true,
                                 playsinline: true
                             };
@@ -343,6 +353,16 @@ export default function VideoMeetComponent() {
                                 videoRef.current = updatedVideos;
                                 return updatedVideos;
                             });
+                        }
+                    };
+
+                    connections[socketListId].onaddstream = (event) => {
+                        handleRemoteStream(event.stream);
+                    };
+
+                    connections[socketListId].ontrack = (event) => {
+                        if (event.streams && event.streams[0]) {
+                            handleRemoteStream(event.streams[0]);
                         }
                     };
 
@@ -451,6 +471,15 @@ export default function VideoMeetComponent() {
     }
 
     
+    let copyMeetingLink = () => {
+        navigator.clipboard.writeText(window.location.href)
+            .then(() => {
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 3000);
+            })
+            .catch(err => console.log('Failed to copy: ', err));
+    }
+
     let connect = () => {
         setAskForUsername(false);
         getMedia();
@@ -516,6 +545,12 @@ export default function VideoMeetComponent() {
                     </div> : <></>}
 
 
+                    {copySuccess && (
+                        <div className={styles.copyNotification}>
+                            Link copied! Share it with others to join.
+                        </div>
+                    )}
+
                     <div className={styles.buttonContainers}>
                         <IconButton onClick={handleVideo} style={{ color: "white" }}>
                             {(video === true) ? <VideocamIcon /> : <VideocamOffIcon />}
@@ -534,13 +569,18 @@ export default function VideoMeetComponent() {
 
                         <Badge badgeContent={newMessages} max={999} color='orange'>
                             <IconButton onClick={() => setModal(!showModal)} style={{ color: "white" }}>
-                                <ChatIcon />                        </IconButton>
+                                <ChatIcon />
+                            </IconButton>
                         </Badge>
+
+                        <IconButton onClick={copyMeetingLink} style={{ color: "#FF9839" }} title="Copy Meeting Link">
+                            <LinkIcon />
+                        </IconButton>
 
                     </div>
 
 
-                    <video className={styles.meetUserVideo} ref={localVideoref} autoPlay muted></video>
+                    <video className={styles.meetUserVideo} ref={localVideoref} autoPlay muted playsInline></video>
 
                     <div className={styles.conferenceView}>
                         {videos.map((video) => (
@@ -554,6 +594,7 @@ export default function VideoMeetComponent() {
                                         }
                                     }}
                                     autoPlay
+                                    playsInline
                                 >
                                 </video>
                             </div>
