@@ -57,6 +57,7 @@ export default function VideoMeetComponent() {
     const videoRef = useRef([])
 
     let [videos, setVideos] = useState([])
+    let [localStream, setLocalStream] = useState(null);
 
     // TODO
     // if(isChrome() === false) {
@@ -70,10 +71,10 @@ export default function VideoMeetComponent() {
     }, [])
 
     useEffect(() => {
-        if (!askForUsername && localVideoref.current && window.localStream) {
-            localVideoref.current.srcObject = window.localStream;
+        if (localVideoref.current && localStream) {
+            localVideoref.current.srcObject = localStream;
         }
-    }, [askForUsername]);
+    }, [localStream, askForUsername]);
 
     let getDislayMedia = () => {
         if (screen) {
@@ -116,6 +117,7 @@ export default function VideoMeetComponent() {
                 const userMediaStream = await navigator.mediaDevices.getUserMedia({ video: videoAvailable, audio: audioAvailable });
                 if (userMediaStream) {
                     window.localStream = userMediaStream;
+                    setLocalStream(userMediaStream);
                     if (localVideoref.current) {
                         localVideoref.current.srcObject = userMediaStream;
                     }
@@ -151,6 +153,7 @@ export default function VideoMeetComponent() {
         } catch (e) { console.log(e) }
 
         window.localStream = stream
+        setLocalStream(stream)
         localVideoref.current.srcObject = stream
 
         for (let id in connections) {
@@ -179,6 +182,7 @@ export default function VideoMeetComponent() {
 
             let blackSilence = (...args) => new MediaStream([black(...args), silence()])
             window.localStream = blackSilence()
+            setLocalStream(window.localStream)
             localVideoref.current.srcObject = window.localStream
 
             for (let id in connections) {
@@ -220,6 +224,7 @@ export default function VideoMeetComponent() {
         } catch (e) { console.log(e) }
 
         window.localStream = stream
+        setLocalStream(stream)
         localVideoref.current.srcObject = stream
 
         for (let id in connections) {
@@ -246,6 +251,7 @@ export default function VideoMeetComponent() {
 
             let blackSilence = (...args) => new MediaStream([black(...args), silence()])
             window.localStream = blackSilence()
+            setLocalStream(window.localStream)
             localVideoref.current.srcObject = window.localStream
 
             getUserMedia()
