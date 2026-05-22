@@ -67,8 +67,13 @@ export default function VideoMeetComponent() {
     useEffect(() => {
         console.log("HELLO")
         getPermissions();
+    }, [])
 
-    })
+    useEffect(() => {
+        if (!askForUsername && localVideoref.current && window.localStream) {
+            localVideoref.current.srcObject = window.localStream;
+        }
+    }, [askForUsername]);
 
     let getDislayMedia = () => {
         if (screen) {
