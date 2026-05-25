@@ -29,7 +29,7 @@ function HomeComponent() {
   const navigate = useNavigate();
   const [meetingCode, setMeetingCode] = useState('');
   const [history, setHistory] = useState([]);
-  const { addToUserHistory, getHistoryOfUser } = useContext(AuthContext);
+  const { getHistoryOfUser } = useContext(AuthContext);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -44,10 +44,9 @@ function HomeComponent() {
     fetchHistory();
   }, [getHistoryOfUser]);
 
-  const handleJoinVideoCall = async (codeToJoin) => {
+  const handleJoinVideoCall = (codeToJoin) => {
     const finalCode = codeToJoin || meetingCode;
     if (!finalCode || !finalCode.trim()) return;
-    await addToUserHistory(finalCode);
     navigate(`/${finalCode}`);
   };
 
@@ -60,9 +59,8 @@ function HomeComponent() {
     return `${p1}-${p2}-${p3}`;
   };
 
-  const handleStartInstantMeeting = async () => {
+  const handleStartInstantMeeting = () => {
     const code = generateMeetingCode();
-    await addToUserHistory(code);
     navigate(`/${code}`);
   };
 

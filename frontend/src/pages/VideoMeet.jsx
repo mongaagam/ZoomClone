@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useContext } from 'react'
 import io from "socket.io-client";
+import { useParams } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
 import { Badge, IconButton, TextField } from '@mui/material';
 import { Button } from '@mui/material';
 import VideocamIcon from '@mui/icons-material/Videocam';
@@ -31,6 +33,8 @@ const peerConfigConnections = {
 }
 
 export default function VideoMeetComponent() {
+    const { url } = useParams();
+    const { addToUserHistory } = useContext(AuthContext);
 
     var socketRef = useRef();
     let socketIdRef = useRef();
@@ -609,6 +613,12 @@ export default function VideoMeetComponent() {
     let connect = () => {
         setAskForUsername(false);
         getMedia();
+        const token = localStorage.getItem("token");
+        if (token && url) {
+            addToUserHistory(url).catch(err => {
+                console.error("Failed to add meeting to history:", err);
+            });
+        }
     }
 
 
