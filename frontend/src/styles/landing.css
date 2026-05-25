@@ -37,9 +37,11 @@
 }
 
 .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     font-size: 28px;
-    fontWeight: 600;
-    color: #FF9839;
+    color: white;
     font-weight: bold;
     letter-spacing: 0.5px;
 }

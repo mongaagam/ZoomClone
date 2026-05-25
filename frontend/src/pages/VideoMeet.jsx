@@ -12,6 +12,8 @@ import ScreenShareIcon from '@mui/icons-material/ScreenShare';
 import StopScreenShareIcon from '@mui/icons-material/StopScreenShare'
 import ChatIcon from '@mui/icons-material/Chat'
 import LinkIcon from '@mui/icons-material/Link';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import StopIcon from '@mui/icons-material/Stop';
 import server from '../environment';
 
 const server_url = server;
@@ -39,9 +41,9 @@ export default function VideoMeetComponent() {
 
     let [audioAvailable, setAudioAvailable] = useState(true);
 
-    let [video, setVideo] = useState([]);
+    let [video, setVideo] = useState(true);
 
-    let [audio, setAudio] = useState();
+    let [audio, setAudio] = useState(true);
 
     let [screen, setScreen] = useState();
 
@@ -64,6 +66,10 @@ export default function VideoMeetComponent() {
     let [videos, setVideos] = useState([])
     let [localStream, setLocalStream] = useState(null);
     let [copySuccess, setCopySuccess] = useState(false);
+    let [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef(null);
+    const recordedChunksRef = useRef([]);
+    const recordingStreamRef = useRef(null);
 
     // TODO
     // if(isChrome() === false) {
@@ -93,56 +99,140 @@ export default function VideoMeetComponent() {
         }
     }
 
-    const getPermissions = async () => {
+    const startRecording = async () => {
         try {
-            const videoPermission = await navigator.mediaDevices.getUserMedia({ video: true });
-            if (videoPermission) {
-                setVideoAvailable(true);
-                console.log('Video permission granted');
-            } else {
-                setVideoAvailable(false);
-                console.log('Video permission denied');
-            }
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: { mediaSource: "screen" },
+                audio: true
+            });
 
-            const audioPermission = await navigator.mediaDevices.getUserMedia({ audio: true });
-            if (audioPermission) {
-                setAudioAvailable(true);
-                console.log('Audio permission granted');
-            } else {
-                setAudioAvailable(false);
-                console.log('Audio permission denied');
-            }
+            recordingStreamRef.current = stream;
+            recordedChunksRef.current = [];
 
-            if (navigator.mediaDevices.getDisplayMedia) {
-                setScreenAvailable(true);
-            } else {
-                setScreenAvailable(false);
-            }
-
-            if (videoAvailable || audioAvailable) {
-                const userMediaStream = await navigator.mediaDevices.getUserMedia({ video: videoAvailable, audio: audioAvailable });
-                if (userMediaStream) {
-                    window.localStream = userMediaStream;
-                    setLocalStream(userMediaStream);
-                    if (localVideoref.current) {
-                        localVideoref.current.srcObject = userMediaStream;
-                    }
+            let options = { mimeType: 'video/webm; codecs=vp9' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/webm; codecs=vp8' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm' };
                 }
             }
-        } catch (error) {
-            console.log(error);
+
+            const recorder = new MediaRecorder(stream, options);
+            mediaRecorderRef.current = recorder;
+
+            recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    recordedChunksRef.current.push(event.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `meeting-record-${new Date().toISOString().slice(0, 10)}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                if (recordingStreamRef.current) {
+                    recordingStreamRef.current.getTracks().forEach(track => track.stop());
+                }
+                setIsRecording(false);
+            };
+
+            recorder.start();
+            setIsRecording(true);
+
+            stream.getVideoTracks()[0].onended = () => {
+                if (recorder.state !== "inactive") {
+                    recorder.stop();
+                }
+            };
+
+        } catch (err) {
+            console.error("Error starting screen recording: ", err);
         }
     };
 
-    useEffect(() => {
-        if (video !== undefined && audio !== undefined) {
-            getUserMedia();
-            console.log("SET STATE HAS ", video, audio);
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            mediaRecorderRef.current.stop();
+        }
+    };
 
+    const handleToggleRecording = () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
+
+    const getPermissions = async () => {
+        try {
+            if (!navigator.mediaDevices) {
+                console.warn("navigator.mediaDevices is undefined. Make sure you are using HTTPS or localhost.");
+                setVideoAvailable(false);
+                setAudioAvailable(false);
+                setScreenAvailable(false);
+                return;
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            setVideoAvailable(true);
+            setAudioAvailable(true);
+            window.localStream = stream;
+            setLocalStream(stream);
+            if (localVideoref.current) {
+                localVideoref.current.srcObject = stream;
+            }
+        } catch (error) {
+            console.log("Error getting both video and audio, trying video only...", error);
+            try {
+                if (navigator.mediaDevices) {
+                    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    setVideoAvailable(true);
+                    setAudioAvailable(false);
+                    window.localStream = videoStream;
+                    setLocalStream(videoStream);
+                    if (localVideoref.current) {
+                        localVideoref.current.srcObject = videoStream;
+                    }
+                }
+            } catch (err2) {
+                console.log("Error getting video, trying audio only...", err2);
+                try {
+                    if (navigator.mediaDevices) {
+                        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        setVideoAvailable(false);
+                        setAudioAvailable(true);
+                        window.localStream = audioStream;
+                        setLocalStream(audioStream);
+                        if (localVideoref.current) {
+                            localVideoref.current.srcObject = audioStream;
+                        }
+                    }
+                } catch (err3) {
+                    console.log("No media permissions granted:", err3);
+                    setVideoAvailable(false);
+                    setAudioAvailable(false);
+                }
+            }
         }
 
+        if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+            setScreenAvailable(true);
+        } else {
+            setScreenAvailable(false);
+        }
+    };
 
-    }, [video, audio])
+
     let getMedia = () => {
         setVideo(videoAvailable);
         setAudio(audioAvailable);
@@ -165,7 +255,15 @@ export default function VideoMeetComponent() {
         for (let id in connections) {
             if (id === socketIdRef.current) continue
 
-            connections[id].addStream(window.localStream)
+            // Remove existing senders to prevent duplicate tracks
+            const senders = connections[id].getSenders();
+            senders.forEach(sender => connections[id].removeTrack(sender));
+
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => {
+                    connections[id].addTrack(track, window.localStream);
+                });
+            }
 
             connections[id].createOffer().then((description) => {
                 console.log(description)
@@ -192,7 +290,14 @@ export default function VideoMeetComponent() {
             localVideoref.current.srcObject = window.localStream
 
             for (let id in connections) {
-                connections[id].addStream(window.localStream)
+                const senders = connections[id].getSenders();
+                senders.forEach(sender => connections[id].removeTrack(sender));
+
+                if (window.localStream) {
+                    window.localStream.getTracks().forEach(track => {
+                        connections[id].addTrack(track, window.localStream);
+                    });
+                }
 
                 connections[id].createOffer().then((description) => {
                     connections[id].setLocalDescription(description)
@@ -236,7 +341,14 @@ export default function VideoMeetComponent() {
         for (let id in connections) {
             if (id === socketIdRef.current) continue
 
-            connections[id].addStream(window.localStream)
+            const senders = connections[id].getSenders();
+            senders.forEach(sender => connections[id].removeTrack(sender));
+
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => {
+                    connections[id].addTrack(track, window.localStream);
+                });
+            }
 
             connections[id].createOffer().then((description) => {
                 connections[id].setLocalDescription(description)
@@ -307,39 +419,37 @@ export default function VideoMeetComponent() {
                     videoRef.current = updatedVideos;
                     return updatedVideos;
                 });
+
+                if (connections[id]) {
+                    connections[id].close();
+                    delete connections[id];
+                }
             })
 
-            socketRef.current.on('user-joined', (id, clients) => {
-                clients.forEach((socketListId) => {
+            const initializePeerConnection = (socketListId) => {
+                connections[socketListId] = new RTCPeerConnection(peerConfigConnections);
 
-                    connections[socketListId] = new RTCPeerConnection(peerConfigConnections)
-                    // Wait for their ice candidate       
-                    connections[socketListId].onicecandidate = function (event) {
-                        if (event.candidate != null) {
-                            socketRef.current.emit('signal', socketListId, JSON.stringify({ 'ice': event.candidate }))
-                        }
+                connections[socketListId].onicecandidate = function (event) {
+                    if (event.candidate != null) {
+                        socketRef.current.emit('signal', socketListId, JSON.stringify({ 'ice': event.candidate }));
                     }
+                };
 
-                    // Wait for their video stream (support both standard ontrack and legacy onaddstream)
-                    const handleRemoteStream = (stream) => {
-                        console.log("BEFORE:", videoRef.current);
-                        console.log("FINDING ID: ", socketListId);
+                const handleRemoteStream = (stream) => {
+                    console.log("BEFORE:", videoRef.current);
+                    console.log("FINDING ID: ", socketListId);
 
-                        let videoExists = videoRef.current.find(video => video.socketId === socketListId);
+                    setVideos(prevVideos => {
+                        let videoExists = prevVideos.find(video => video.socketId === socketListId);
 
                         if (videoExists) {
                             console.log("FOUND EXISTING");
-
-                            // Update the stream of the existing video
-                            setVideos(videos => {
-                                const updatedVideos = videos.map(video =>
-                                    video.socketId === socketListId ? { ...video, stream: stream } : video
-                                );
-                                videoRef.current = updatedVideos;
-                                return updatedVideos;
-                            });
+                            const updatedVideos = prevVideos.map(video =>
+                                video.socketId === socketListId ? { ...video, stream: stream } : video
+                            );
+                            videoRef.current = updatedVideos;
+                            return updatedVideos;
                         } else {
-                            // Create a new video
                             console.log("CREATING NEW");
                             let newVideo = {
                                 socketId: socketListId,
@@ -347,51 +457,57 @@ export default function VideoMeetComponent() {
                                 autoplay: true,
                                 playsinline: true
                             };
-
-                            setVideos(videos => {
-                                const updatedVideos = [...videos, newVideo];
-                                videoRef.current = updatedVideos;
-                                return updatedVideos;
-                            });
+                            const updatedVideos = [...prevVideos, newVideo];
+                            videoRef.current = updatedVideos;
+                            return updatedVideos;
                         }
-                    };
+                    });
+                };
 
-                    connections[socketListId].onaddstream = (event) => {
-                        handleRemoteStream(event.stream);
-                    };
-
-                    connections[socketListId].ontrack = (event) => {
-                        if (event.streams && event.streams[0]) {
-                            handleRemoteStream(event.streams[0]);
-                        }
-                    };
-
-
-                    // Add the local video stream
-                    if (window.localStream !== undefined && window.localStream !== null) {
-                        connections[socketListId].addStream(window.localStream)
-                    } else {
-                        let blackSilence = (...args) => new MediaStream([black(...args), silence()])
-                        window.localStream = blackSilence()
-                        connections[socketListId].addStream(window.localStream)
+                connections[socketListId].ontrack = (event) => {
+                    if (event.streams && event.streams[0]) {
+                        handleRemoteStream(event.streams[0]);
                     }
-                })
+                };
+
+                if (window.localStream !== undefined && window.localStream !== null) {
+                    window.localStream.getTracks().forEach(track => {
+                        connections[socketListId].addTrack(track, window.localStream);
+                    });
+                } else {
+                    let blackSilence = (...args) => new MediaStream([black(...args), silence()]);
+                    window.localStream = blackSilence();
+                    window.localStream.getTracks().forEach(track => {
+                        connections[socketListId].addTrack(track, window.localStream);
+                    });
+                }
+            };
+
+            socketRef.current.on('user-joined', (id, clients) => {
+                if (id === socketIdRef.current) {
+                    clients.forEach((socketListId) => {
+                        if (socketListId === socketIdRef.current) return;
+                        if (connections[socketListId]) return;
+
+                        initializePeerConnection(socketListId);
+                    });
+                } else {
+                    if (!connections[id]) {
+                        initializePeerConnection(id);
+                    }
+                }
 
                 if (id === socketIdRef.current) {
                     for (let id2 in connections) {
-                        if (id2 === socketIdRef.current) continue
-
-                        try {
-                            connections[id2].addStream(window.localStream)
-                        } catch (e) { }
+                        if (id2 === socketIdRef.current) continue;
 
                         connections[id2].createOffer().then((description) => {
                             connections[id2].setLocalDescription(description)
                                 .then(() => {
-                                    socketRef.current.emit('signal', id2, JSON.stringify({ 'sdp': connections[id2].localDescription }))
+                                    socketRef.current.emit('signal', id2, JSON.stringify({ 'sdp': connections[id2].localDescription }));
                                 })
-                                .catch(e => console.log(e))
-                        })
+                                .catch(e => console.log(e));
+                        }).catch(e => console.log(e));
                     }
                 }
             })
@@ -414,12 +530,22 @@ export default function VideoMeetComponent() {
     }
 
     let handleVideo = () => {
-        setVideo(!video);
-        // getUserMedia();
+        const newVideoState = !video;
+        setVideo(newVideoState);
+        if (window.localStream) {
+            window.localStream.getVideoTracks().forEach(track => {
+                track.enabled = newVideoState;
+            });
+        }
     }
     let handleAudio = () => {
-        setAudio(!audio)
-        // getUserMedia();
+        const newAudioState = !audio;
+        setAudio(newAudioState);
+        if (window.localStream) {
+            window.localStream.getAudioTracks().forEach(track => {
+                track.enabled = newAudioState;
+            });
+        }
     }
 
     useEffect(() => {
@@ -575,6 +701,10 @@ export default function VideoMeetComponent() {
 
                         <IconButton onClick={copyMeetingLink} style={{ color: "#FF9839" }} title="Copy Meeting Link">
                             <LinkIcon />
+                        </IconButton>
+
+                        <IconButton onClick={handleToggleRecording} style={{ color: isRecording ? "red" : "white" }} title={isRecording ? "Stop Recording" : "Record Meeting"}>
+                            {isRecording ? <StopIcon /> : <FiberManualRecordIcon />}
                         </IconButton>
 
                     </div>
